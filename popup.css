@@ -1,0 +1,100 @@
+:root {
+  --bg-black: #000000;
+  --card-bg: #16191c;
+  --item-bg: #1e2227;
+  --nagi-blue: #00a2ff;
+  --nagi-green: #14532d;
+  --text-white: #ffffff;
+  --text-dim: #71767b;
+  --text-yellow: #f5d142;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body.nagi-style {
+  width: 500px;
+  height: 700px;
+  background-color: var(--bg-black);
+  color: var(--text-white);
+  font-family: -apple-system, system-ui, sans-serif;
+  padding: 12px;
+}
+
+.app-card { display: flex; flex-direction: column; gap: 15px; }
+
+/* Header */
+.nagi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+}
+.logo-group { display: flex; align-items: center; gap: 10px; }
+.nagi-logo { width: 32px; height: 32px; }
+.nagi-header h1 { font-size: 20px; font-weight: 900; }
+.sub-title { color: var(--nagi-blue); font-size: 14px; font-weight: normal; }
+.guide-link { color: var(--text-dim); text-decoration: none; font-size: 12px; border-bottom: 1px solid var(--text-dim); }
+
+/* Main Card Container */
+.nagi-main-card {
+  background-color: var(--card-bg);
+  border-radius: 24px;
+  padding: 20px;
+  border: 1px solid #333;
+}
+
+/* Common Layouts */
+.scan-controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; }
+.nagi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+.media-card { border-radius: 12px; overflow: hidden; cursor: pointer; border: 2px solid transparent; aspect-ratio: 1; }
+.media-card.selected { border-color: var(--nagi-blue); }
+.media-card img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Queue Items */
+.queue-meta { text-align: center; margin-bottom: 15px; }
+.meta-label { display: block; font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.meta-val { font-size: 28px; font-weight: 800; color: var(--nagi-blue); }
+
+.nagi-list { display: flex; flex-direction: column; gap: 12px; max-height: 350px; overflow-y: auto; padding-right: 5px; }
+.queue-item { background: var(--item-bg); border-radius: 16px; padding: 12px; display: flex; gap: 12px; }
+.item-thumb { width: 60px; height: 60px; border-radius: 10px; object-fit: cover; }
+.item-main { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+.caption-editor { background: #000; border: none; color: #fff; padding: 8px; border-radius: 8px; font-size: 12px; resize: none; }
+.time-editor-row { display: flex; align-items: center; gap: 5px; }
+.large-time-input { background: #000; color: #fff; border: none; padding: 5px; border-radius: 5px; font-size: 11px; flex: 1; }
+
+/* Buttons Style (Nagi Pill Style) */
+.nagi-btn {
+  border-radius: 50px;
+  border: none;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  text-align: center;
+}
+.nagi-btn.white { background: #fff; color: #000; }
+.nagi-btn.blue { background: var(--nagi-blue); color: #fff; }
+.nagi-btn.big-action { background: var(--nagi-green); color: #86efac; flex: 1; height: 55px; }
+
+.btn-group { display: flex; gap: 10px; align-items: center; }
+.icon-btn-trash { background: #1a1d21; border: 1px solid #333; padding: 12px; border-radius: 50%; cursor: pointer; font-size: 20px; }
+
+.divider { height: 1px; background: #333; margin: 20px 0; }
+
+/* Footer */
+.nagi-footer { border-radius: 24px; background: var(--card-bg); border: 1px solid #333; padding: 15px; text-align: center; }
+.dev-info { color: var(--text-dim); font-size: 13px; margin-bottom: 5px; }
+.author { color: var(--nagi-blue); font-weight: bold; }
+.coffee-line { font-size: 13px; font-style: italic; color: #fff; }
+.bank-info { color: var(--text-yellow); font-weight: 800; font-style: normal; }
+
+/* Timer & Utilities */
+.countdown-bar { text-align: center; margin-bottom: 10px; font-family: monospace; font-size: 18px; color: var(--text-yellow); }
+.hidden { display: none !important; }
+.log-overlay { font-size: 10px; color: var(--text-dim); margin-top: 5px; text-align: center; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }

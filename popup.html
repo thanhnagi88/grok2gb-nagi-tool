@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Grok2FB - Nagi Tool</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="nagi-style">
+  <div class="app-card">
+    <header class="nagi-header">
+      <div class="logo-group">
+        <img src="icons/icon48.png" class="nagi-logo">
+        <h1>Grok2FB <span class="sub-title">- Nagi Tool</span></h1>
+      </div>
+      <a href="#" class="guide-link">Guide?</a>
+    </header>
+
+    <main class="nagi-main-card">
+      <!-- Section 1: Scanner -->
+      <section id="scanning-section">
+        <div class="scan-controls">
+          <button id="scan-btn" class="nagi-btn white">Scan Images 🔍</button>
+          
+          <div id="selection-controls" class="hidden">
+            <label class="nagi-checkbox">
+              <input type="checkbox" id="select-all">
+               Chọn tất cả
+            </label>
+            <button id="confirm-queue-btn" class="nagi-btn blue">Add to Queue ✅</button>
+          </div>
+        </div>
+        <div id="media-grid" class="nagi-grid"></div>
+      </section>
+
+      <!-- Section 2: Queue -->
+      <section id="queue-section" class="hidden">
+        <div class="queue-meta">
+          <span class="meta-label">QUEUE ITEMS</span>
+          <span id="queue-count" class="meta-val">0</span>
+        </div>
+        <div id="queue-list" class="nagi-list"></div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- Action Footer (Inside Main Card) -->
+      <div class="main-actions">
+        <div id="countdown-display" class="countdown-bar hidden">
+          <span id="countdown-timer">00:00:00</span>
+        </div>
+        
+        <div class="btn-group">
+          <button id="toggle-pipeline-btn" class="nagi-btn big-action">Start Posting ▶</button>
+          <button id="clear-queue-btn" class="icon-btn-trash">🗑️</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Global Footer -->
+    <footer class="nagi-footer">
+      <div class="dev-info">Developed by <span class="author">Thành Nagi</span></div>
+      <div class="coffee-line">☕ Buy me a coffee: <span class="bank-info">VPBank 889151188</span></div>
+    </footer>
+
+    <div id="status-logs" class="log-overlay">Ready...</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
