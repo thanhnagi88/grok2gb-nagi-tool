@@ -101,8 +101,34 @@ async function calculateSmartAlarm(queue) {
   }
 }
 
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.action === 'checkQueue') processNextInQueue(message.force || false);
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'checkQueue') {
+    processNextInQueue(message.force || false);
+  } else if (message.action === 'request_watermark') {
+    // Logic xem trước watermark
+    (async () => {
+      try {
+        const resp = await fetch(message.url);
+        const blob = await resp.blob();
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          await setupOffscreenDocument();
+          const logoUrl = chrome.runtime.getURL('icons/thanhgina.png');
+          const response = await chrome.runtime.sendMessage({
+            target: 'offscreen',
+            action: 'watermark',
+            imageUrl: reader.result,
+            logoUrl: logoUrl
+          });
+          sendResponse(response);
+        };
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    })();
+    return true; // Giữ kết nối để sendResponse bất đồng bộ
+  }
   return true;
 });
 

@@ -42,18 +42,29 @@ async function scanGrok() {
 function renderMediaGrid() {
   const grid = document.getElementById('media-grid');
   grid.innerHTML = foundMedia.map((item, idx) => `
-    <div class="media-card" data-idx="${idx}" id="card-${idx}">
+    <div class="media-card" id="card-${idx}">
       <img src="${item.previewUrl}">
-      <div class="card-overlay">✓</div>
+      <div class="preview-btn" data-url="${item.url}" title="Xem thử Logo">👁️</div>
+      <div class="card-overlay" onclick="toggleSelection(${idx})">✓</div>
     </div>
   `).join('');
 
-  grid.querySelectorAll('.media-card').forEach(card => {
-    card.onclick = () => {
-      card.classList.toggle('selected');
-      updateConfirmButton();
+  grid.querySelectorAll('.preview-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      openPreview(btn.dataset.url);
     };
   });
+
+  grid.querySelectorAll('.media-card').forEach((card, idx) => {
+    card.onclick = () => toggleSelection(idx);
+  });
+}
+
+function toggleSelection(idx) {
+  const card = document.getElementById(`card-${idx}`);
+  card.classList.toggle('selected');
+  updateConfirmButton();
 }
 
 function toggleAllSelection(checked) {
@@ -308,6 +319,42 @@ function toLocalISO(date) {
 function addLog(msg) {
   document.getElementById('status-logs').innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
 }
+
+async function openPreview(url) {
+  const modal = document.getElementById('preview-modal');
+  const loading = document.getElementById('preview-loading');
+  const img = document.getElementById('preview-img');
+  
+  modal.classList.remove('hidden');
+  loading.classList.remove('hidden');
+  img.classList.add('hidden');
+  img.src = "";
+
+  try {
+    chrome.runtime.sendMessage({ action: 'request_watermark', url: url }, (response) => {
+      if (response && response.success) {
+        img.src = response.dataUrl;
+        img.classList.remove('hidden');
+        loading.classList.add('hidden');
+      } else {
+        alert("Lỗi xem trước: " + (response?.error || "Không rõ nguyên nhân"));
+        modal.classList.add('hidden');
+      }
+    });
+  } catch (e) {
+    console.error("Preview Error:", e);
+  }
+}
+
+// Close Modal Events
+document.querySelector('.close-modal').onclick = () => {
+  document.getElementById('preview-modal').classList.add('hidden');
+};
+
+window.onclick = (e) => {
+  const modal = document.getElementById('preview-modal');
+  if (e.target === modal) modal.classList.add('hidden');
+};
 
 function renderInitialState() {
   chrome.storage.local.get(['postQueue'], (data) => {
