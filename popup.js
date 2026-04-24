@@ -171,8 +171,9 @@ async function updateQueueUI(forcedQueue = null) {
 
 function attachQueueEvents() {
   // Preview from queue
-  document.querySelectorAll('.item-thumb').forEach(thumb => {
-    thumb.onclick = () => openPreview(thumb.dataset.url);
+  document.querySelectorAll('.thumb-wrapper').forEach(wrapper => {
+    const thumb = wrapper.querySelector('.item-thumb');
+    wrapper.onclick = () => openPreview(thumb.dataset.url);
   });
 
   // Caption changes
