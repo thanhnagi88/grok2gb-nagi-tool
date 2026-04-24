@@ -42,10 +42,18 @@ async function processImage(imageUrl, logoUrl) {
         const logoW = logoImg.width * logoScale;
         const logoH = logoImg.height * logoScale;
         
-        // 3. Vị trí: Góc dưới bên phải
+        // 3. Vị trí: RANDOM trong nửa dưới của hình
         const padding = canvas.width * LOGO_PADDING_RATIO;
-        const x = canvas.width - logoW - padding;
-        const y = canvas.height - logoH - padding;
+        
+        // Ngẫu nhiên trục X (từ trái sang phải)
+        const minX = padding;
+        const maxX = canvas.width - logoW - padding;
+        const x = Math.floor(Math.random() * (maxX - minX + 1)) + minX;
+        
+        // Ngẫu nhiên trục Y (chỉ trong nửa dưới của hình)
+        const minY = canvas.height / 2;
+        const maxY = canvas.height - logoH - padding;
+        const y = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
         
         // Vẽ Logo
         ctx.globalAlpha = LOGO_OPACITY; 
