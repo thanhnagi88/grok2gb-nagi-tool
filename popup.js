@@ -43,8 +43,11 @@ function renderMediaGrid() {
   const grid = document.getElementById('media-grid');
   grid.innerHTML = foundMedia.map((item, idx) => `
     <div class="media-card" id="card-${idx}" data-idx="${idx}">
-      <img src="${item.previewUrl}">
-      <div class="preview-btn" data-url="${item.url}" title="Xem thử Logo">👁️</div>
+      ${item.type === 'video' 
+        ? `<video src="${item.url}" class="card-media-el" muted playsinline preload="metadata"></video>` 
+        : `<img src="${item.previewUrl}" class="card-media-el">`}
+      ${item.type === 'video' ? '<div class="video-badge">🎬 Video</div>' : ''}
+      <div class="preview-btn" data-url="${item.url}" title="Xem thử">👁️</div>
       <div class="card-overlay">✓</div>
     </div>
   `).join('');
@@ -151,7 +154,11 @@ async function updateQueueUI(forcedQueue = null) {
     return `
       <div class="queue-item ${item.status || 'pending'}">
         <div class="thumb-wrapper">
-          <img src="${item.previewUrl}" class="item-thumb" data-url="${item.url}" title="Bấm để xem thử Logo">
+          ${item.type === 'video'
+            ? `<video src="${item.url}" class="item-thumb" muted playsinline preload="metadata" onerror="this.outerHTML='<div class=\"item-thumb err\">🎬</div>'"></video>`
+            : `<img src="${item.previewUrl}" class="item-thumb" data-url="${item.url}" title="Xem thử" onerror="this.src='icons/icon48.png'">`
+          }
+          ${item.type === 'video' ? '<div class="video-badge-small">🎬</div>' : ''}
           <div class="preview-eye">👁️</div>
         </div>
         <div class="item-main">

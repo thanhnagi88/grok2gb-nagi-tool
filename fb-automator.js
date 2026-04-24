@@ -10,7 +10,9 @@ async function startAutomatedPost() {
     // 1. Data Prep
     const res = await fetch(post.mediaData);
     const blob = await res.blob();
-    const file = new File([blob], "grok_post.png", { type: blob.type });
+    const isVideo = blob.type.includes('video');
+    const fileName = isVideo ? 'grok_video.mp4' : 'grok_post.png';
+    const file = new File([blob], fileName, { type: blob.type });
 
     // 2. File Input
     showStatusOverlay("🖼️ Đang tìm cổng nạp ảnh...");
@@ -25,10 +27,13 @@ async function startAutomatedPost() {
     dataTransfer.items.add(file);
     fileInput.files = dataTransfer.files;
     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-    showStatusOverlay("⏳ Đợi xử lý ảnh (2.5s)...");
-    await new Promise(r => setTimeout(r, 2500));
+    
+    // 3. Wait for Upload
+    showStatusOverlay(`⏳ Đang nạp ${isVideo ? 'Video' : 'Ảnh'}...`);
+    const uploadDelay = isVideo ? 5000 : 2500; 
+    await new Promise(r => setTimeout(r, uploadDelay));
 
-    // 3. Caption
+    // 4. Fill Status
     showStatusOverlay("📝 Đang dán bài viết...");
     const textboxes = Array.from(document.querySelectorAll('div[role="textbox"]'));
     const textbox = textboxes.find(el => isVisible(el));
@@ -43,30 +48,38 @@ async function startAutomatedPost() {
     }
 
     // 4. Sequential Post Engine
-    showStatusOverlay("⏳ Đang chuẩn bị chuỗi lệnh cuối...");
+    // 4. SMART FLOW ENGINE (Handles Next-Next-Post sequence)
+    showStatusOverlay("⏳ Đang điều hướng các bước xác nhận...");
     
-    setTimeout(async () => {
-      // STEP A: Click "Next"
-      const nextBtn = await findSmartElement(["Next", "Tiếp tục", "Tiếp"]);
-      if (nextBtn) {
-        showStatusOverlay("➡️ Bấm nút [Tiếp theo]...");
-        clickElement(nextBtn);
-        await new Promise(r => setTimeout(r, 4500)); // Wait longer for transition
-      }
-
-      // STEP B: Click "Post" or "Share"
-      showStatusOverlay("🔍 Đang săn tìm nút [Đăng/Post]...");
-      // Increase retries for the final button
-      const postBtn = await findSmartElement(["Post", "Đăng", "Share", "Chia sẻ"], 10); 
+    (async () => {
+      let clicks = 0;
+      let posted = false;
       
-      if (postBtn) {
-        showStatusOverlay("🚀 ĐANG ĐĂNG BÀI TOÀN TẬP!");
-        clickElement(postBtn);
-        finalizePost(post.id);
-      } else {
-        showStatusOverlay("⚠️ Hãy giúp robot bấm [Đăng] bước CUỐI này.", true);
+      while (clicks < 6 && !posted) {
+        // Tìm các nút tiềm năng cho mọi ngôn ngữ
+        const btn = await findSmartElement(["Next", "Tiếp tục", "Tiếp", "Post", "Đăng", "Share", "Chia sẻ", "Done", "Xong"], 8);
+        
+        if (btn) {
+          const btnText = (btn.innerText || btn.getAttribute('aria-label') || "").toLowerCase();
+          showStatusOverlay(`➡️ Đang bấm: ${btnText}...`);
+          
+          clickElement(btn);
+          clicks++;
+          
+          // Kiểm tra xem đây có phải là nút chốt hay không
+          if (btnText.includes('post') || btnText.includes('đăng') || btnText.includes('share') || btnText.includes('chia sẻ')) {
+            posted = true;
+            finalizePost(post.id);
+          }
+          
+          await new Promise(r => setTimeout(r, 4000)); // Đợi Facebook xử lý bước tiếp theo
+        } else {
+          // Nếu không thấy nút sau nhiều lần retry, robot xin trợ giúp
+          showStatusOverlay("⚠️ Hãy bấm [Đăng] giúp robot nếu bài chưa lên.", true);
+          break;
+        }
       }
-    }, 10000);
+    })();
 
   } catch (err) {
     showStatusOverlay(`❌ Lỗi v2.1: ${err.message}`, true);

@@ -69,6 +69,21 @@ function extractMediaWithCaptions() {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "fetch_blob") {
+    fetch(request.url)
+      .then(resp => resp.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => sendResponse({ success: true, dataUrl: reader.result });
+        reader.readAsDataURL(blob);
+      })
+      .catch(err => {
+        console.error("Content Fetch Error:", err);
+        sendResponse({ success: false, error: err.message });
+      });
+    return true; 
+  }
+
   if (request.action === "scan_media") {
     try {
       const data = extractMediaWithCaptions();
