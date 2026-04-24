@@ -78,6 +78,7 @@ body.nagi-style {
 .nagi-btn.white { background: #fff; color: #000; }
 .nagi-btn.blue { background: var(--nagi-blue); color: #fff; }
 .nagi-btn.big-action { background: var(--nagi-green); color: #86efac; flex: 1; height: 55px; }
+.nagi-btn.big-action.active { background: #b91d1d !important; color: #fecaca !important; }
 
 .btn-group { display: flex; gap: 10px; align-items: center; }
 .icon-btn-trash { background: #1a1d21; border: 1px solid #333; padding: 12px; border-radius: 50%; cursor: pointer; font-size: 20px; }

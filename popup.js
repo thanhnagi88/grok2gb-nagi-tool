@@ -100,12 +100,12 @@ async function confirmToQueue() {
   foundMedia = [];
   document.getElementById('media-grid').innerHTML = '';
   document.getElementById('selection-controls').classList.add('hidden');
-  document.getElementById('scan-btn').classList.add('hidden');
-  document.getElementById('scanning-section').classList.add('hidden');
+  
+  // Hiển thị cả hai phần để người dùng có thể quét tiếp
   document.getElementById('queue-section').classList.remove('hidden');
   
-  updateQueueUI(fullQueue); // Push data directly for instant update
-  addLog("✅ Đã thêm vào hàng chờ.");
+  updateQueueUI(fullQueue); 
+  addLog("✅ Đã thêm nối tiếp vào hàng chờ.");
 }
 
 async function updateQueueUI(forcedQueue = null) {
@@ -118,9 +118,7 @@ async function updateQueueUI(forcedQueue = null) {
   if (counter) counter.innerText = queue.length;
   
   if (queue.length === 0) {
-    list.innerHTML = `<div class="empty-state">Hàng chờ đang trống. Hãy quét hình nhé!</div>`;
-    document.getElementById('scanning-section').classList.remove('hidden');
-    document.getElementById('scan-btn').classList.remove('hidden');
+    list.innerHTML = `<div class="empty-state">Hàng chờ đang trống. Hãy quét hình từ Grok!</div>`;
     document.getElementById('queue-section').classList.add('hidden');
     return;
   }
@@ -225,26 +223,23 @@ async function togglePipeline() {
   
   if (newState) {
     addLog("▶ Tiến trình đã bắt đầu.");
-    chrome.runtime.sendMessage({ action: 'checkQueue' });
+    chrome.runtime.sendMessage({ action: 'checkQueue', force: true });
   } else {
     addLog("⏹ Đã tạm dừng tiến trình.");
   }
 }
 
 function updateGlobalStatus(active) {
-  const pill = document.getElementById('global-status');
   const btn = document.getElementById('toggle-pipeline-btn');
   
   if (active) {
-    pill.innerText = "● ACTIVE";
-    pill.className = "status-pill active";
     btn.innerHTML = `<span class="btn-icon">⏹</span> DỪNG TIẾN TRÌNH`;
-    btn.className = "btn start-stop-btn active";
+    btn.className = "nagi-btn big-action active";
+    addLog("▶ Tiến trình đang hoạt động.");
   } else {
-    pill.innerText = "○ PAUSED";
-    pill.className = "status-pill paused";
     btn.innerHTML = `<span class="btn-icon">▶</span> BẮT ĐẦU ĐĂNG BÀI`;
-    btn.className = "btn start-stop-btn paused";
+    btn.className = "nagi-btn big-action";
+    addLog("⏹ Tiến trình đang tạm dừng.");
   }
 }
 
@@ -316,9 +311,11 @@ function addLog(msg) {
 
 function renderInitialState() {
   chrome.storage.local.get(['postQueue'], (data) => {
+    // Luôn hiện phần quét để người dùng sẵn sàng làm việc
+    document.getElementById('scanning-section').classList.remove('hidden');
+    document.getElementById('scan-btn').classList.remove('hidden');
+
     if (data.postQueue && data.postQueue.length > 0) {
-      document.getElementById('scanning-section').classList.add('hidden');
-      document.getElementById('scan-btn').classList.add('hidden');
       document.getElementById('queue-section').classList.remove('hidden');
       updateQueueUI();
     }

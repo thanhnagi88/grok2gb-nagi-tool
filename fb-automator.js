@@ -25,13 +25,21 @@ async function startAutomatedPost() {
     dataTransfer.items.add(file);
     fileInput.files = dataTransfer.files;
     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+    showStatusOverlay("⏳ Đợi xử lý ảnh (2.5s)...");
+    await new Promise(r => setTimeout(r, 2500));
 
     // 3. Caption
     showStatusOverlay("📝 Đang dán bài viết...");
-    const textbox = await waitForElement('div[role="textbox"]');
+    const textboxes = Array.from(document.querySelectorAll('div[role="textbox"]'));
+    const textbox = textboxes.find(el => isVisible(el));
+    
     if (textbox) {
       textbox.focus();
+      await new Promise(r => setTimeout(r, 500));
+      // Xóa nếu có rác và dán caption
+      document.execCommand('selectAll', false, null);
       document.execCommand('insertText', false, post.caption);
+      textbox.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     // 4. Sequential Post Engine
