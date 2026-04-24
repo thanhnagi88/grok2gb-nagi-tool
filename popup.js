@@ -236,9 +236,13 @@ function attachQueueEvents() {
 
 async function adjustTime(id, time, isAbsolute = false) {
   const d = await chrome.storage.local.get(['postQueue']);
-  const q = (d.postQueue || []).map(p => p.id === id ? { ...p, scheduledTime: time, status: 'pending' } : p);
+  const targetTime = time === 0 ? Date.now() : time;
+  const q = (d.postQueue || []).map(p => p.id === id ? { ...p, scheduledTime: targetTime, status: 'pending' } : p);
   await chrome.storage.local.set({ postQueue: q });
   updateQueueUI();
+  
+  // Phát lệnh cho robot chạy ngay lập tức
+  chrome.runtime.sendMessage({ action: 'checkQueue', force: true });
 }
 
 async function togglePipeline() {
