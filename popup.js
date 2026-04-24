@@ -205,18 +205,17 @@ function attachQueueEvents() {
   document.querySelectorAll('.adj-btn').forEach(btn => {
     btn.onclick = async () => {
       const id = btn.dataset.id;
-      if (btn.innerText === '🚀') {
-         // Post Now Logic
-         adjustTime(id, 0, true);
-         chrome.runtime.sendMessage({ action: 'checkQueue' });
-         addLog("🚀 Đang khởi động đăng ngay...");
+      if (btn.classList.contains('🚀') || btn.innerText.includes('🚀')) {
+         await adjustTime(id, 0, true);
+         addLog("🚀 Đang kích hoạt đăng ngay...");
       } else {
          const mins = parseInt(btn.dataset.val);
+         if (isNaN(mins)) return;
          const d = await chrome.storage.local.get(['postQueue']);
          const item = (d.postQueue || []).find(p => p.id === id);
          if (item) {
            const newTime = item.scheduledTime + (mins * 60 * 1000);
-           adjustTime(id, newTime);
+           await adjustTime(id, newTime, true);
          }
       }
     };
