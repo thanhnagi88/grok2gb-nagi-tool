@@ -42,10 +42,10 @@ async function scanGrok() {
 function renderMediaGrid() {
   const grid = document.getElementById('media-grid');
   grid.innerHTML = foundMedia.map((item, idx) => `
-    <div class="media-card" id="card-${idx}">
+    <div class="media-card" id="card-${idx}" data-idx="${idx}">
       <img src="${item.previewUrl}">
       <div class="preview-btn" data-url="${item.url}" title="Xem thử Logo">👁️</div>
-      <div class="card-overlay" onclick="toggleSelection(${idx})">✓</div>
+      <div class="card-overlay">✓</div>
     </div>
   `).join('');
 
