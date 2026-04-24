@@ -137,14 +137,17 @@ async function updateQueueUI(forcedQueue = null) {
   const sorted = [...queue].sort((a, b) => a.scheduledTime - b.scheduledTime);
 
   list.innerHTML = sorted.map(item => {
-    const date = new Date(item.scheduledTime);
+    const date = item.scheduledTime ? new Date(item.scheduledTime) : new Date();
     const isoStr = toLocalISO(date);
     const isPosted = item.status === 'posted';
     const isProcessing = item.status === 'processing';
 
     return `
       <div class="queue-item ${item.status || 'pending'}">
-        <img src="${item.previewUrl}" class="item-thumb">
+        <div class="thumb-wrapper">
+          <img src="${item.previewUrl}" class="item-thumb" data-url="${item.url}" title="Bấm để xem thử Logo">
+          <div class="preview-eye">👁️</div>
+        </div>
         <div class="item-main">
           <textarea class="caption-editor" data-id="${item.id}" ${isPosted || isProcessing ? 'disabled' : ''}>${item.caption}</textarea>
           
@@ -167,6 +170,11 @@ async function updateQueueUI(forcedQueue = null) {
 }
 
 function attachQueueEvents() {
+  // Preview from queue
+  document.querySelectorAll('.item-thumb').forEach(thumb => {
+    thumb.onclick = () => openPreview(thumb.dataset.url);
+  });
+
   // Caption changes
   document.querySelectorAll('.caption-editor').forEach(el => {
     el.oninput = async () => {
