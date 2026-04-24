@@ -13,6 +13,7 @@
   ],
   "host_permissions": [
     "https://grok.com/*",
+    "https://x.ai/*",
     "https://www.facebook.com/*",
     "https://assets.grok.com/*",
     "https://imagine-public.x.ai/*"
@@ -35,7 +36,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://grok.com/*"],
+      "matches": ["https://grok.com/*", "https://x.ai/*"],
       "js": ["content.js"]
     },
     {

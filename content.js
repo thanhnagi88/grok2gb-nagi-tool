@@ -19,6 +19,9 @@ function extractMediaWithCaptions() {
     const isAi = u.includes('grok.com') || 
                  u.includes('x.ai') || 
                  u.includes('generated') ||
+                 u.includes('imagine-public') ||
+                 u.includes('assets.grok.com') ||
+                 u.includes('file-service-res') ||
                  u.includes('content?cache=');
     
     if (!isAi) return;

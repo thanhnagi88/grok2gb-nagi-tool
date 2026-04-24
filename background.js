@@ -113,16 +113,29 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // Quản lý Offscreen Document cho xử lý Canvas
 async function setupOffscreenDocument() {
   const OFFSCREEN_PATH = 'offscreen/offscreen.html';
-  const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: ['OFFSCREEN_DOCUMENT'],
-    documentUrls: [chrome.runtime.getURL(OFFSCREEN_PATH)]
-  });
+  const fullUrl = chrome.runtime.getURL(OFFSCREEN_PATH);
 
-  if (existingContexts.length > 0) return;
+  // Kiểm tra an toàn cho các phiên bản Chrome khác nhau
+  if (typeof chrome.runtime.getContexts === 'function') {
+    const existingContexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT'],
+      documentUrls: [fullUrl]
+    });
+    if (existingContexts.length > 0) return;
+  } else {
+    // Fallback cho Chrome cũ: Thử kiểm tra qua storage hoặc bỏ qua để tránh lỗi treo
+    const data = await chrome.storage.local.get(['has_offscreen']);
+    if (data.has_offscreen) return;
+  }
 
-  await chrome.offscreen.createDocument({
-    url: OFFSCREEN_PATH,
-    reasons: ['DOM_PARSER'], 
-    justification: 'Xử lý đóng dấu logo lên hình ảnh trước khi đăng'
-  });
+  try {
+    await chrome.offscreen.createDocument({
+      url: OFFSCREEN_PATH,
+      reasons: ['DOM_PARSER'], 
+      justification: 'Xử lý đóng dấu logo lên hình ảnh trước khi đăng'
+    });
+    await chrome.storage.local.set({ has_offscreen: true });
+  } catch (e) {
+    console.error("Offscreen creation failed:", e);
+  }
 }
