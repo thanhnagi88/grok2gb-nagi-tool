@@ -42,12 +42,35 @@ async function processNextInQueue(force = false) {
       
       const blob = await resp.blob();
       const reader = new FileReader();
-      reader.onloadend = () => {
-        chrome.storage.local.set({ 
-          currentProcessingPost: { ...nextPost, mediaData: reader.result } 
-        }, () => {
+      reader.onloadend = async () => {
+        try {
+          // BƯỚC ĐÓNG DẤU LOGO
+          await setupOffscreenDocument();
+          const logoUrl = chrome.runtime.getURL('icons/thanhgina.png');
+          
+          const response = await chrome.runtime.sendMessage({
+            target: 'offscreen',
+            action: 'watermark',
+            imageUrl: reader.result,
+            logoUrl: logoUrl
+          });
+
+          const finalDataUrl = response.success ? response.dataUrl : reader.result;
+          if (!response.success) console.warn("Lỗi đóng dấu, sử dụng hình gốc:", response.error);
+
+          await chrome.storage.local.set({ 
+            currentProcessingPost: { ...nextPost, mediaData: finalDataUrl } 
+          });
+          
           chrome.tabs.create({ url: "https://www.facebook.com/", active: true });
-        });
+        } catch (err) {
+          console.error("Watermark Error:", err);
+          // Fallback nếu có lỗi
+          await chrome.storage.local.set({ 
+            currentProcessingPost: { ...nextPost, mediaData: reader.result } 
+          });
+          chrome.tabs.create({ url: "https://www.facebook.com/", active: true });
+        }
       };
       reader.readAsDataURL(blob);
     } catch (e) {
@@ -86,3 +109,20 @@ chrome.runtime.onMessage.addListener((message) => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'checkQueueAlarm') processNextInQueue();
 });
+
+// Quản lý Offscreen Document cho xử lý Canvas
+async function setupOffscreenDocument() {
+  const OFFSCREEN_PATH = 'offscreen/offscreen.html';
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT'],
+    documentUrls: [chrome.runtime.getURL(OFFSCREEN_PATH)]
+  });
+
+  if (existingContexts.length > 0) return;
+
+  await chrome.offscreen.createDocument({
+    url: OFFSCREEN_PATH,
+    reasons: ['DOM_PARSER'], 
+    justification: 'Xử lý đóng dấu logo lên hình ảnh trước khi đăng'
+  });
+}
