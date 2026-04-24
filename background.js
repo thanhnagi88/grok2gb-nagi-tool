@@ -1,20 +1,25 @@
-// Grok2FB - background.js v2.5 (Stable Recovery)
-
+// Grok2FB - background.js v3.0 (Clean & Fast)
 chrome.runtime.onInstalled.addListener(() => {
   console.log("Grok2FB Installed - Nagi Tool");
   chrome.alarms.create("checkQueueAlarm", { periodInMinutes: 15 });
 });
 
-// --- HÀM XỬ LÝ WATERMARK TRỰC TIẾP (OFFSCREEN CANVAS) ---
+// --- HÀM XỬ LÝ WATERMARK SIÊU TỐC ---
 async function applyWatermark(imageUrl) {
   try {
     const logoUrl = chrome.runtime.getURL('icons/thanhgina.png');
     
-    // Tải ảnh gốc và logo
-    const [mainRes, logoRes] = await Promise.all([fetch(imageUrl), fetch(logoUrl)]);
+    // Tải ảnh (Timeout 5s để không bị treo)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const [mainRes, logoRes] = await Promise.all([
+      fetch(imageUrl, { signal: controller.signal }),
+      fetch(logoUrl)
+    ]);
+    clearTimeout(timeoutId);
+
     const [mainBlob, logoBlob] = await Promise.all([mainRes.blob(), logoRes.blob()]);
-    
-    // Chuyển sang Bitmap để vẽ lên Canvas
     const [mainBitmap, logoBitmap] = await Promise.all([
       createImageBitmap(mainBlob),
       createImageBitmap(logoBlob)
@@ -22,16 +27,13 @@ async function applyWatermark(imageUrl) {
 
     const canvas = new OffscreenCanvas(mainBitmap.width, mainBitmap.height);
     const ctx = canvas.getContext('2d');
-
-    // 1. Vẽ hình gốc
     ctx.drawImage(mainBitmap, 0, 0);
 
-    // 2. Cấu hình Logo (30% chiều rộng, opacity 100%)
     const logoW = canvas.width * 0.3;
     const logoH = logoBitmap.height * (logoW / logoBitmap.width);
     const padding = canvas.width * 0.03;
 
-    // 3. Vị trí RANDOM ở nửa dưới
+    // Vị trí Random nửa dưới
     const x = Math.floor(Math.random() * (canvas.width - logoW - 2 * padding)) + padding;
     const minY = canvas.height / 2;
     const maxY = canvas.height - logoH - padding;
@@ -39,7 +41,6 @@ async function applyWatermark(imageUrl) {
 
     ctx.drawImage(logoBitmap, x, y, logoW, logoH);
 
-    // 4. Xuất kết quả DataURL
     const finalBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.9 });
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -47,8 +48,8 @@ async function applyWatermark(imageUrl) {
       reader.readAsDataURL(finalBlob);
     });
   } catch (e) {
-    console.error("Watermark processing failed:", e);
-    return imageUrl; // Trả về ảnh gốc nếu lỗi
+    console.error("Watermark failed, using original:", e);
+    return imageUrl; 
   }
 }
 
@@ -56,16 +57,16 @@ async function processNextInQueue(force = false) {
   const data = await chrome.storage.local.get(['postQueue', 'isPipelineActive', 'currentProcessingPost', 'lastProcessingTime']);
   const now = Date.now();
 
-  if (!data.isPipelineActive) {
+  if (!data.isPipelineActive && !force) {
     calculateSmartAlarm(data.postQueue);
     return;
   }
 
-  if (force || (data.currentProcessingPost && (now - (data.lastProcessingTime || 0) > 60000))) {
-    console.log("[Background] Làm mới trạng thái đăng bài...");
+  // Dọn dẹp nếu bị kẹt quá 30s hoặc được yêu cầu force
+  if (force || (data.currentProcessingPost && (now - (data.lastProcessingTime || 0) > 30000))) {
     await chrome.storage.local.remove(['currentProcessingPost', 'lastProcessingTime']);
   } else if (data.currentProcessingPost) {
-    return;
+    return; // Đang bận xử lý bài khác
   }
 
   const queue = data.postQueue || [];
@@ -80,14 +81,15 @@ async function processNextInQueue(force = false) {
     try {
       const watermarkedData = await applyWatermark(nextPost.url);
       await chrome.storage.local.set({ 
-        currentProcessingPost: { ...nextPost, mediaData: watermarkedData } 
+        currentProcessingPost: { ...nextPost, mediaData: watermarkedData },
+        lastProcessingTime: Date.now()
       });
       chrome.tabs.create({ url: "https://www.facebook.com/", active: true });
     } catch (e) {
-      console.error("Background Fast Processing Error:", e);
-      const failedQueue = updatedQueue.map(p => p.id === nextPost.id ? { ...p, status: 'pending', scheduledTime: now + 300000 } : p);
+      console.error("Pipeline Error:", e);
+      const failedQueue = queue.map(p => p.id === nextPost.id ? { ...p, status: 'pending', scheduledTime: Date.now() + 120000 } : p);
       await chrome.storage.local.set({ postQueue: failedQueue });
-      await chrome.storage.local.remove(['currentProcessingPost', 'lastProcessingTime']);
+      await chrome.storage.local.remove(['currentProcessingPost']);
     }
   } else {
     calculateSmartAlarm(queue);
@@ -95,18 +97,13 @@ async function processNextInQueue(force = false) {
 }
 
 async function calculateSmartAlarm(queue) {
-  const now = Date.now();
   const nextPending = (queue || [])
     .filter(p => !p.status || p.status === 'pending')
     .sort((a, b) => a.scheduledTime - b.scheduledTime)[0];
 
   if (nextPending) {
-    const diffMs = nextPending.scheduledTime - now;
-    const diffMins = Math.max(1, Math.ceil(diffMs / 60000));
-    const sleepMins = Math.min(diffMins, 15);
-    chrome.alarms.create("checkQueueAlarm", { delayInMinutes: sleepMins });
-  } else {
-    chrome.alarms.create("checkQueueAlarm", { delayInMinutes: 15 });
+    const diffMins = Math.max(1, Math.ceil((nextPending.scheduledTime - Date.now()) / 60000));
+    chrome.alarms.create("checkQueueAlarm", { delayInMinutes: Math.min(diffMins, 15) });
   }
 }
 
@@ -126,24 +123,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'checkQueueAlarm') processNextInQueue();
-      contextTypes: ['OFFSCREEN_DOCUMENT'],
-      documentUrls: [fullUrl]
-    });
-    if (existingContexts.length > 0) return;
-  } else {
-    // Fallback cho Chrome cũ: Thử kiểm tra qua storage hoặc bỏ qua để tránh lỗi treo
-    const data = await chrome.storage.local.get(['has_offscreen']);
-    if (data.has_offscreen) return;
-  }
-
-  try {
-    await chrome.offscreen.createDocument({
-      url: OFFSCREEN_PATH,
-      reasons: ['DOM_PARSER'], 
-      justification: 'Xử lý đóng dấu logo lên hình ảnh trước khi đăng'
-    });
-    await chrome.storage.local.set({ has_offscreen: true });
-  } catch (e) {
-    console.error("Offscreen creation failed:", e);
-  }
-}
+});
