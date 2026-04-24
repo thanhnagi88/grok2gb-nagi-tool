@@ -77,7 +77,13 @@ function toggleAllSelection(checked) {
 
 function updateConfirmButton() {
   const count = document.querySelectorAll('.media-card.selected').length;
-  document.getElementById('confirm-queue-btn').innerText = `XÁC NHẬN CHỌN (${count}) ✅`;
+  const btn = document.getElementById('confirm-queue-btn');
+  if (count > 0) {
+    btn.classList.remove('hidden');
+    btn.innerText = `XÁC NHẬN CHỌN (${count}) ✅`;
+  } else {
+    btn.classList.add('hidden');
+  }
 }
 
 async function confirmToQueue() {
@@ -94,15 +100,16 @@ async function confirmToQueue() {
 
   const newItems = selectedIndices.map((idx, i) => {
     const item = foundMedia[idx];
+    if (!item) return null;
     return {
       id: Math.random().toString(36).substr(2, 9),
       url: item.url,
       previewUrl: item.previewUrl,
-      caption: transformPromptToStatus(item.caption),
+      caption: typeof transformPromptToStatus === 'function' ? transformPromptToStatus(item.caption) : (item.caption || ""),
       scheduledTime: lastTime + ((i + 1) * interval * 60 * 1000),
       status: 'pending'
     };
-  });
+  }).filter(item => item !== null);
 
   const fullQueue = [...queue, ...newItems];
   await chrome.storage.local.set({ postQueue: fullQueue });
@@ -111,12 +118,11 @@ async function confirmToQueue() {
   foundMedia = [];
   document.getElementById('media-grid').innerHTML = '';
   document.getElementById('selection-controls').classList.add('hidden');
-  
-  // Hiển thị cả hai phần để người dùng có thể quét tiếp
+  document.getElementById('scanning-section').classList.add('hidden'); // Ẩn luôn phần quét
   document.getElementById('queue-section').classList.remove('hidden');
   
   updateQueueUI(fullQueue); 
-  addLog("✅ Đã thêm nối tiếp vào hàng chờ.");
+  addLog(`✅ Đã thêm ${newItems.length} hình vào hàng chờ.`);
 }
 
 async function updateQueueUI(forcedQueue = null) {
