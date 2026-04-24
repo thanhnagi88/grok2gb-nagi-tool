@@ -79,9 +79,24 @@ async function processNextInQueue(force = false) {
     await chrome.storage.local.set({ postQueue: updatedQueue, lastProcessingTime: now });
 
     try {
-      const watermarkedData = await applyWatermark(nextPost.url);
+      let finalMediaData;
+      
+      if (nextPost.type === 'video') {
+        // Video: Không đóng dấu, lấy thô DataURL
+        const resp = await fetch(nextPost.url);
+        const blob = await resp.blob();
+        finalMediaData = await new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        // Hình ảnh: Tiến hành đóng dấu logo
+        finalMediaData = await applyWatermark(nextPost.url);
+      }
+
       await chrome.storage.local.set({ 
-        currentProcessingPost: { ...nextPost, mediaData: watermarkedData },
+        currentProcessingPost: { ...nextPost, mediaData: finalMediaData },
         lastProcessingTime: Date.now()
       });
       chrome.tabs.create({ url: "https://www.facebook.com/", active: true });

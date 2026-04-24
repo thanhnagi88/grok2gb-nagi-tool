@@ -14,7 +14,7 @@ async function startAutomatedPost() {
 
     // 2. File Input
     showStatusOverlay("🖼️ Đang tìm cổng nạp ảnh...");
-    let fileInput = document.querySelector('input[type="file"][accept*="image"]');
+    let fileInput = document.querySelector('input[type="file"][accept*="image"], input[type="file"][accept*="video"]');
     if (!fileInput) {
       const trigger = await findSmartElement(["mind", "nghĩ", "Photo", "Ảnh"]);
       if (trigger) { trigger.click(); fileInput = await waitForElement('div[role="dialog"] input[type="file"]'); }
