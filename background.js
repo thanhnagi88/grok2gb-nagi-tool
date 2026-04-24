@@ -5,6 +5,53 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create("checkQueueAlarm", { periodInMinutes: 15 });
 });
 
+// --- HÀM XỬ LÝ WATERMARK TRỰC TIẾP (OFFSCREEN CANVAS) ---
+async function applyWatermark(imageUrl) {
+  try {
+    const logoUrl = chrome.runtime.getURL('icons/thanhgina.png');
+    
+    // Tải ảnh gốc và logo
+    const [mainRes, logoRes] = await Promise.all([fetch(imageUrl), fetch(logoUrl)]);
+    const [mainBlob, logoBlob] = await Promise.all([mainRes.blob(), logoRes.blob()]);
+    
+    // Chuyển sang Bitmap để vẽ lên Canvas
+    const [mainBitmap, logoBitmap] = await Promise.all([
+      createImageBitmap(mainBlob),
+      createImageBitmap(logoBlob)
+    ]);
+
+    const canvas = new OffscreenCanvas(mainBitmap.width, mainBitmap.height);
+    const ctx = canvas.getContext('2d');
+
+    // 1. Vẽ hình gốc
+    ctx.drawImage(mainBitmap, 0, 0);
+
+    // 2. Cấu hình Logo (30% chiều rộng, opacity 100%)
+    const logoW = canvas.width * 0.3;
+    const logoH = logoBitmap.height * (logoW / logoBitmap.width);
+    const padding = canvas.width * 0.03;
+
+    // 3. Vị trí RANDOM ở nửa dưới
+    const x = Math.floor(Math.random() * (canvas.width - logoW - 2 * padding)) + padding;
+    const minY = canvas.height / 2;
+    const maxY = canvas.height - logoH - padding;
+    const y = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
+
+    ctx.drawImage(logoBitmap, x, y, logoW, logoH);
+
+    // 4. Xuất kết quả DataURL
+    const finalBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.9 });
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(finalBlob);
+    });
+  } catch (e) {
+    console.error("Watermark processing failed:", e);
+    return imageUrl; // Trả về ảnh gốc nếu lỗi
+  }
+}
+
 async function processNextInQueue(force = false) {
   const data = await chrome.storage.local.get(['postQueue', 'isPipelineActive', 'currentProcessingPost', 'lastProcessingTime']);
   const now = Date.now();
@@ -14,12 +61,11 @@ async function processNextInQueue(force = false) {
     return;
   }
 
-  // Nếu người dùng chủ động nhấn nút hoặc kẹt lâu (>1 phút), hãy dọn dẹp bài cũ
   if (force || (data.currentProcessingPost && (now - (data.lastProcessingTime || 0) > 60000))) {
     console.log("[Background] Làm mới trạng thái đăng bài...");
     await chrome.storage.local.remove(['currentProcessingPost', 'lastProcessingTime']);
   } else if (data.currentProcessingPost) {
-    return; // Đang xử lý bận, không làm gì thêm
+    return;
   }
 
   const queue = data.postQueue || [];
@@ -28,54 +74,17 @@ async function processNextInQueue(force = false) {
     .sort((a, b) => a.scheduledTime - b.scheduledTime)[0];
 
   if (nextPost) {
-    console.log("[Background] Đang khởi động đăng bài:", nextPost.caption);
     const updatedQueue = queue.map(p => p.id === nextPost.id ? { ...p, status: 'processing' } : p);
-    
-    await chrome.storage.local.set({ 
-      postQueue: updatedQueue,
-      lastProcessingTime: now 
-    });
+    await chrome.storage.local.set({ postQueue: updatedQueue, lastProcessingTime: now });
 
     try {
-      const resp = await fetch(nextPost.url);
-      if (!resp.ok) throw new Error("Image fetch failed");
-      
-      const blob = await resp.blob();
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          // BƯỚC ĐÓNG DẤU LOGO
-          await setupOffscreenDocument();
-          const logoUrl = chrome.runtime.getURL('icons/thanhgina.png');
-          
-          const response = await chrome.runtime.sendMessage({
-            target: 'offscreen',
-            action: 'watermark',
-            imageUrl: reader.result,
-            logoUrl: logoUrl
-          });
-
-          const finalDataUrl = response.success ? response.dataUrl : reader.result;
-          if (!response.success) console.warn("Lỗi đóng dấu, sử dụng hình gốc:", response.error);
-
-          await chrome.storage.local.set({ 
-            currentProcessingPost: { ...nextPost, mediaData: finalDataUrl } 
-          });
-          
-          chrome.tabs.create({ url: "https://www.facebook.com/", active: true });
-        } catch (err) {
-          console.error("Watermark Error:", err);
-          // Fallback nếu có lỗi
-          await chrome.storage.local.set({ 
-            currentProcessingPost: { ...nextPost, mediaData: reader.result } 
-          });
-          chrome.tabs.create({ url: "https://www.facebook.com/", active: true });
-        }
-      };
-      reader.readAsDataURL(blob);
+      const watermarkedData = await applyWatermark(nextPost.url);
+      await chrome.storage.local.set({ 
+        currentProcessingPost: { ...nextPost, mediaData: watermarkedData } 
+      });
+      chrome.tabs.create({ url: "https://www.facebook.com/", active: true });
     } catch (e) {
-      console.error("Background Fetch Error:", e);
-      // Trả bài về trạng thái chờ và đẩy lùi thời gian để tránh lặp lại lỗi ngay lập tức
+      console.error("Background Fast Processing Error:", e);
       const failedQueue = updatedQueue.map(p => p.id === nextPost.id ? { ...p, status: 'pending', scheduledTime: now + 300000 } : p);
       await chrome.storage.local.set({ postQueue: failedQueue });
       await chrome.storage.local.remove(['currentProcessingPost', 'lastProcessingTime']);
@@ -105,45 +114,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'checkQueue') {
     processNextInQueue(message.force || false);
   } else if (message.action === 'request_watermark') {
-    // Logic xem trước watermark
-    (async () => {
-      try {
-        const resp = await fetch(message.url);
-        const blob = await resp.blob();
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          await setupOffscreenDocument();
-          const logoUrl = chrome.runtime.getURL('icons/thanhgina.png');
-          const response = await chrome.runtime.sendMessage({
-            target: 'offscreen',
-            action: 'watermark',
-            imageUrl: reader.result,
-            logoUrl: logoUrl
-          });
-          sendResponse(response);
-        };
-        reader.readAsDataURL(blob);
-      } catch (err) {
-        sendResponse({ success: false, error: err.message });
-      }
-    })();
-    return true; // Giữ kết nối để sendResponse bất đồng bộ
+    applyWatermark(message.url).then(dataUrl => {
+      sendResponse({ success: true, dataUrl: dataUrl });
+    }).catch(err => {
+      sendResponse({ success: false, error: err.message });
+    });
+    return true; 
   }
   return true;
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'checkQueueAlarm') processNextInQueue();
-});
-
-// Quản lý Offscreen Document cho xử lý Canvas
-async function setupOffscreenDocument() {
-  const OFFSCREEN_PATH = 'offscreen/offscreen.html';
-  const fullUrl = chrome.runtime.getURL(OFFSCREEN_PATH);
-
-  // Kiểm tra an toàn cho các phiên bản Chrome khác nhau
-  if (typeof chrome.runtime.getContexts === 'function') {
-    const existingContexts = await chrome.runtime.getContexts({
       contextTypes: ['OFFSCREEN_DOCUMENT'],
       documentUrls: [fullUrl]
     });
