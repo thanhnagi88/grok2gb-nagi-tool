@@ -1,4 +1,9 @@
-// Grok2FB - Offscreen Processor v1.0
+// === CẤU HÌNH LOGO (Bạn có thể thay đổi ở đây) ===
+const LOGO_SIZE_RATIO = 0.3;     // Kích thước logo (0.3 = 30% chiều rộng ảnh gốc)
+const LOGO_OPACITY = 1.0;        // Độ đậm nhạt (1.0 = rõ nét hoàn toàn, 0.5 = mờ 50%)
+const LOGO_PADDING_RATIO = 0.03; // Khoảng cách từ lề (0.03 = 3% ảnh gốc)
+// ===========================================
+
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (request.target !== 'offscreen') return;
 
@@ -32,18 +37,18 @@ async function processImage(imageUrl, logoUrl) {
         // 1. Vẽ hình gốc
         ctx.drawImage(mainImg, 0, 0);
         
-        // 2. Tính toán kích thước Logo (giữ tỷ lệ, rộng khoảng 15% hình gốc)
-        const logoScale = (canvas.width * 0.15) / logoImg.width;
+        // 2. Tính toán kích thước Logo
+        const logoScale = (canvas.width * LOGO_SIZE_RATIO) / logoImg.width;
         const logoW = logoImg.width * logoScale;
         const logoH = logoImg.height * logoScale;
         
-        // 3. Vị trí: Góc dưới bên phải, cách lề 2%
-        const padding = canvas.width * 0.02;
+        // 3. Vị trí: Góc dưới bên phải
+        const padding = canvas.width * LOGO_PADDING_RATIO;
         const x = canvas.width - logoW - padding;
         const y = canvas.height - logoH - padding;
         
         // Vẽ Logo
-        ctx.globalAlpha = 0.8; // Hơi trong suốt một chút cho chuyên nghiệp
+        ctx.globalAlpha = LOGO_OPACITY; 
         ctx.drawImage(logoImg, x, y, logoW, logoH);
         ctx.globalAlpha = 1.0;
         
